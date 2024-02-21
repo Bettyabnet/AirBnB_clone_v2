@@ -8,22 +8,31 @@ class FileStorage:
     __file_path = 'file.json'
     __objects = {}
 
-    def all(self):
+    def all(self, cls=None):
         """Returns a dictionary of models currently in storage"""
-        return FileStorage.__objects
+        if cls is None:
+            return FileStorage.__objects
+        else:
+            filtered_objects = {}
+            for key, value in FileStorage.__objects.items():
+                class_name = key.split(".")[0]
+                if class_name == cls.__name__:
+                    filtered_objects[key] = value
+            return filtered_objects
 
     def new(self, obj):
         """Adds new object to storage dictionary"""
-        self.all().update({obj.to_dict()['__class__'] + '.' + obj.id: obj})
+        key = "{}.{}".format(type(obj).__name__, obj.id)
+        FileStorage.__objects[key] = obj
 
     def save(self):
         """Saves storage dictionary to file"""
+        serialized_objects = {}
+        for key, value in FileStorage.__objects.items():
+            serialized_objects[key] = value.to_dict()
+
         with open(FileStorage.__file_path, 'w') as f:
-            temp = {}
-            temp.update(FileStorage.__objects)
-            for key, val in temp.items():
-                temp[key] = val.to_dict()
-            json.dump(temp, f)
+            json.dump(serialized_objects, f)
 
     def reload(self):
         """Loads storage dictionary from file"""
@@ -48,3 +57,13 @@ class FileStorage:
                         self.all()[key] = classes[val['__class__']](**val)
         except FileNotFoundError:
             pass
+
+    def delete(self, obj=None):
+        """
+        Deletes the given object from storage if it exists.
+        If obj is equal to None, the method does nothing.
+        """
+        if obj is not None:
+            key = "{}.{}".format(type(obj).__name__, obj.id)
+            if key in FileStorage.__objects:
+                del FileStorage.__objects[key]
